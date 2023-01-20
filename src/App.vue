@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import HelloWorld from "./components/HelloWorld.vue";
-import TheWelcome from "./components/TheWelcome.vue";
+import { useCounterStore } from "./stores/counter1";
+
+const counterStore = useCounterStore();
+const click = () => {
+  counterStore.increment();
+};
 </script>
 
 <template>
@@ -13,14 +17,13 @@ import TheWelcome from "./components/TheWelcome.vue";
       height="125"
     />
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+    <div>
+      <div>count:{{ counterStore.count }}</div>
+      <div>doubleCount:{{ counterStore.doubleCount }}</div>
+      <div>trCount:{{ counterStore.trCount }}</div>
+      <button @click="click">Add</button>
     </div>
   </header>
-
-  <main>
-    <TheWelcome />
-  </main>
 </template>
 
 <style scoped>
@@ -42,12 +45,6 @@ header {
 
   .logo {
     margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
   }
 }
 </style>
