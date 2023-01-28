@@ -7,7 +7,11 @@ const click = () => {
   counterStore.increment();
 };
 counterStore.$subscribe(function (state) {
-  console.log("state", state);
+  console.log("subscribe state", state);
+});
+counterStore.$onAction(({ after }) => {
+  console.log("action");
+  after(() => console.log("after"));
 });
 </script>
 

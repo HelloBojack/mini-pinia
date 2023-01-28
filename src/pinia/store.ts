@@ -1,3 +1,4 @@
+import type { _Method } from "./types";
 import {
   watch,
   computed,
@@ -10,6 +11,7 @@ import {
   type ComputedRef,
 } from "vue";
 import { piniaSymbol, type Pinia } from "./rootStore";
+import { addSubscription, triggerSubscriptions } from "./subscriptions";
 
 interface Options {
   id: string;
@@ -45,13 +47,14 @@ function mergeReactiveObjects(target: any, patchToApply: any) {
   return target;
 }
 
-function createSetupStore<Id extends string, SS>(
+function createSetupStore<Id extends string, SS, T extends _Method>(
   id: Id,
   setup: () => SS,
   options: Omit<Options, "id">,
   pinia: Pinia,
   isOptionsStore: boolean
 ) {
+  const actionSubscriptions: T[] = [];
   function $patch(partialStateOrMutator: any) {
     if (typeof partialStateOrMutator === "function") {
       partialStateOrMutator(pinia.state.value[id]);
@@ -59,12 +62,13 @@ function createSetupStore<Id extends string, SS>(
       mergeReactiveObjects(pinia.state.value[id], partialStateOrMutator);
     }
   }
-  function $subscribe(callback, options = {}) {
+  function $subscribe(callback: T, options = {}) {
     watch(pinia.state.value[id], callback);
   }
   const partialStore = {
     $patch,
     $subscribe,
+    $onAction: addSubscription.bind(null, actionSubscriptions),
   };
 
   const store = reactive(partialStore);
@@ -77,12 +81,54 @@ function createSetupStore<Id extends string, SS>(
   const setupStore = setup();
   pinia._s.set(id, store);
 
+  function wrapAction(name: string, action: T) {
+    return function () {
+      const args = Array.from(arguments);
+
+      const afterCallbackList: Array<(resolvedReturn: any) => any> = [];
+      const onErrorCallbackList: Array<(error: unknown) => unknown> = [];
+      function after(callback: T) {
+        afterCallbackList.push(callback);
+      }
+      function onError(callback: T) {
+        onErrorCallbackList.push(callback);
+      }
+
+      triggerSubscriptions(actionSubscriptions, { args, after, onError });
+
+      let ret;
+      try {
+        ret = action.apply(store, args);
+      } catch (error) {
+        triggerSubscriptions(onErrorCallbackList, error);
+        throw error;
+      }
+
+      if (ret instanceof Promise) {
+        return ret
+          .then((value) => {
+            triggerSubscriptions(afterCallbackList, value);
+            return value;
+          })
+          .catch((error) => {
+            triggerSubscriptions(onErrorCallbackList, error);
+            return Promise.reject(error);
+          });
+      }
+
+      triggerSubscriptions(afterCallbackList, ret);
+      return ret;
+    };
+  }
+
   for (const key in setupStore) {
     const prop = setupStore[key];
     if (isReactive(prop) || (isRef(prop) && !isComputed(prop))) {
       if (!isOptionsStore) {
         pinia.state.value[id][key] = prop;
       }
+    } else if (typeof prop === "function") {
+      setupStore[key] = wrapAction(key, prop);
     }
   }
 
