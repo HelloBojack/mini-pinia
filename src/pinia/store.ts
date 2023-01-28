@@ -1,4 +1,5 @@
 import {
+  watch,
   computed,
   getCurrentInstance,
   inject,
@@ -40,7 +41,6 @@ function mergeReactiveObjects(target: any, patchToApply: any) {
       target[key] = subPatch;
     }
   }
-  console.log("target", target);
 
   return target;
 }
@@ -59,8 +59,12 @@ function createSetupStore<Id extends string, SS>(
       mergeReactiveObjects(pinia.state.value[id], partialStateOrMutator);
     }
   }
+  function $subscribe(callback, options = {}) {
+    watch(pinia.state.value[id], callback);
+  }
   const partialStore = {
     $patch,
+    $subscribe,
   };
 
   const store = reactive(partialStore);
@@ -81,7 +85,6 @@ function createSetupStore<Id extends string, SS>(
       }
     }
   }
-  console.log("setupStore", id, setupStore);
 
   Object.assign(store, setupStore);
   return store;

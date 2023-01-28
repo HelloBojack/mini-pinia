@@ -6,6 +6,9 @@ const counterStore = useCounterStore();
 const click = () => {
   counterStore.increment();
 };
+counterStore.$subscribe(function (state) {
+  console.log("state", state);
+});
 </script>
 
 <template>
