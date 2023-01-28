@@ -1,4 +1,12 @@
-import { computed, getCurrentInstance, inject, reactive } from "vue";
+import {
+  computed,
+  getCurrentInstance,
+  inject,
+  isReactive,
+  isRef,
+  reactive,
+  type ComputedRef,
+} from "vue";
 import { piniaSymbol, type Pinia } from "./rootStore";
 
 interface Options {
@@ -8,15 +16,37 @@ interface Options {
   actions: any;
 }
 
+function isComputed(v: any): v is ComputedRef {
+  // 计算属性 是 ref 且 是 effect
+  return !!(isRef(v) && (v as any).effect);
+}
+
 function createSetupStore<Id extends string, SS>(
   id: Id,
   setup: () => SS,
   options: Omit<Options, "id">,
-  pinia: Pinia
+  pinia: Pinia,
+  isOptionsStore: boolean
 ) {
   const store = reactive({});
+
+  const initialState = pinia.state.value[id];
+  if (!isOptionsStore && !initialState) {
+    pinia.state.value[id] = {};
+  }
+
   const setupStore = setup();
   pinia._s.set(id, store);
+
+  for (const key in setupStore) {
+    const prop = setupStore[key];
+    if (isReactive(prop) || (isRef(prop) && !isComputed(prop))) {
+      if (!isOptionsStore) {
+        pinia.state.value[id][key] = prop;
+      }
+    }
+  }
+
   Object.assign(store, setupStore);
   return store;
 }
@@ -42,7 +72,7 @@ function createOptionsStore<Id extends string>(
     return Object.assign(localState, actions, wrapGetters);
   }
 
-  const store = createSetupStore(id, setup, options, pinia);
+  const store = createSetupStore(id, setup, options, pinia, true);
   return store;
 }
 
@@ -80,7 +110,7 @@ export function defineStore<Id extends string>(
     if (!pinia._s.has(id)) {
       // 没有则创建
       if (isSetupStore) {
-        createSetupStore(id, setup, options, pinia);
+        createSetupStore(id, setup, options, pinia, false);
       } else {
         createOptionsStore(id, options, pinia);
       }
