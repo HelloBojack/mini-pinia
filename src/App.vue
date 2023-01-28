@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CounterCom from "./components/CounterCom.vue";
-import { useCounterStore } from "./stores/counter1";
+import { useCounterStore } from "./stores/counter2";
 
 const counterStore = useCounterStore();
 const click = () => {
