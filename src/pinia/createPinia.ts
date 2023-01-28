@@ -1,8 +1,8 @@
 import { ref, type App } from "vue";
-import { piniaSymbol } from "./rootStore";
+import { piniaSymbol, type Pinia } from "./rootStore";
 
-export function createPinia() {
-  const pinia = {
+export function createPinia(): Pinia {
+  const pinia: Pinia = {
     install(app: App) {
       // 所有 store, 都能获取 pinia
       app.provide(piniaSymbol, pinia);

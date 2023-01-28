@@ -1,5 +1,5 @@
 import { computed, getCurrentInstance, inject, reactive } from "vue";
-import { piniaSymbol } from "./rootStore";
+import { piniaSymbol, type Pinia } from "./rootStore";
 
 interface Options {
   id: string;
@@ -8,10 +8,10 @@ interface Options {
   actions: any;
 }
 
-function createOptionsStore<Id extends Pick<Options, "id">>(
+function createOptionsStore<Id extends string>(
   id: Id,
   options: Omit<Options, "id">,
-  pinia: any
+  pinia: Pinia
 ) {
   const { state, actions, getters } = options;
   const store = reactive({});
@@ -19,7 +19,7 @@ function createOptionsStore<Id extends Pick<Options, "id">>(
   const localState = (pinia.state.value[id] = state ? state() : {});
 
   const wrapGetters = Object.keys(getters || {}).reduce(
-    (computedGetters, name) => {
+    (computedGetters: Record<string, any>, name) => {
       computedGetters[name] = computed(() => getters[name].call(store, store));
       return computedGetters;
     },
@@ -56,7 +56,7 @@ export function defineStore<Id extends string>(
   function useStore() {
     // 当前 vue 实例
     const currentInstance = getCurrentInstance();
-    const pinia = currentInstance && inject(piniaSymbol);
+    const pinia: any = currentInstance && inject(piniaSymbol, null);
 
     if (!pinia._s.has(id)) {
       // 没有则创建

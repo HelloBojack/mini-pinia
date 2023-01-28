@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CounterCom from "./components/CounterCom.vue";
 import { useCounterStore } from "./stores/counter1";
 
 const counterStore = useCounterStore();
@@ -23,6 +24,8 @@ const click = () => {
       <div>trCount:{{ counterStore.trCount }}</div>
       <button @click="click">Add</button>
     </div>
+
+    <CounterCom />
   </header>
 </template>
 
