@@ -111,6 +111,14 @@ function createOptionsStore<Id extends string>(
   }
 
   const store = createSetupStore(id, setup, options, pinia, true);
+
+  store.$reset = function $reset() {
+    const initialState = state ? state() : {};
+    this.$patch((state) => {
+      Object.assign(state, initialState);
+    });
+  };
+
   return store;
 }
 
