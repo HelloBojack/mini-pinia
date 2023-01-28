@@ -5,6 +5,7 @@ import {
   isReactive,
   isRef,
   reactive,
+  toRefs,
   type ComputedRef,
 } from "vue";
 import { piniaSymbol, type Pinia } from "./rootStore";
@@ -16,9 +17,32 @@ interface Options {
   actions: any;
 }
 
+function isPlainObject(value: any) {
+  return (
+    value &&
+    typeof value === "object" &&
+    Object.prototype.toString.call(value) === "[object Object]" &&
+    typeof value.toJSON !== "function"
+  );
+}
 function isComputed(v: any): v is ComputedRef {
   // 计算属性 是 ref 且 是 effect
   return !!(isRef(v) && (v as any).effect);
+}
+
+function mergeReactiveObjects(target: any, patchToApply: any) {
+  for (const key in patchToApply) {
+    const subPatch = patchToApply[key];
+    const targetValue = target[key];
+    if (isPlainObject(subPatch) && isPlainObject(targetValue)) {
+      target[key] = mergeReactiveObjects(targetValue, subPatch);
+    } else {
+      target[key] = subPatch;
+    }
+  }
+  console.log("target", target);
+
+  return target;
 }
 
 function createSetupStore<Id extends string, SS>(
@@ -28,7 +52,18 @@ function createSetupStore<Id extends string, SS>(
   pinia: Pinia,
   isOptionsStore: boolean
 ) {
-  const store = reactive({});
+  function $patch(partialStateOrMutator: any) {
+    if (typeof partialStateOrMutator === "function") {
+      partialStateOrMutator(pinia.state.value[id]);
+    } else {
+      mergeReactiveObjects(pinia.state.value[id], partialStateOrMutator);
+    }
+  }
+  const partialStore = {
+    $patch,
+  };
+
+  const store = reactive(partialStore);
 
   const initialState = pinia.state.value[id];
   if (!isOptionsStore && !initialState) {
@@ -46,6 +81,7 @@ function createSetupStore<Id extends string, SS>(
       }
     }
   }
+  console.log("setupStore", id, setupStore);
 
   Object.assign(store, setupStore);
   return store;
@@ -58,7 +94,9 @@ function createOptionsStore<Id extends string>(
 ) {
   const { state, actions, getters } = options;
   function setup(): any {
-    const localState = (pinia.state.value[id] = state ? state() : {});
+    pinia.state.value[id] = state ? state() : {};
+    // 不使用 toRefs，$Patch 时 mergeReactiveObjects 丢失响应式
+    const localState = toRefs(pinia.state.value[id]);
     const wrapGetters = Object.keys(getters || {}).reduce(
       (computedGetters: Record<string, any>, name) => {
         computedGetters[name] = computed(() => {

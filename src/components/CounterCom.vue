@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { useCounterStore } from "@/stores/counter2";
+import { useCounterStore } from "@/stores/counter1";
 const counterStore = useCounterStore();
+const click = () => {
+  counterStore.$patch((state) => (state.count = 3));
+};
 </script>
 <template>
   <div>
@@ -9,6 +12,6 @@ const counterStore = useCounterStore();
     <div>count:{{ counterStore.count }}</div>
     <div>doubleCount:{{ counterStore.doubleCount }}</div>
     <div>trCount:{{ counterStore.trCount }}</div>
-    <!-- <button @click="click">Add</button> -->
+    <button @click="click">Add</button>
   </div>
 </template>
