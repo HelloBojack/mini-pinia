@@ -6,13 +6,13 @@ const counterStore = useCounterStore();
 const click = () => {
   counterStore.increment();
 };
-counterStore.$subscribe(function (state) {
-  console.log("subscribe state", state);
-});
-counterStore.$onAction(({ after }) => {
-  console.log("action");
-  after(() => console.log("after"));
-});
+// counterStore.$subscribe(function (state) {
+//   console.log("subscribe state", state);
+// });
+// counterStore.$onAction(({ after }) => {
+//   console.log("action");
+//   after(() => console.log("after"));
+// });
 </script>
 
 <template>

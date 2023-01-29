@@ -155,7 +155,7 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
 
   pinia._p.forEach((plugin) => {
     const scope = effectScope();
-    scope.run(() => plugin({ store }));
+    scope.run(() => plugin({ store, options }));
   });
 
   return store;
@@ -204,7 +204,8 @@ export function defineStore<Id extends string>(
 export function defineStore(options: Options): any;
 export function defineStore<Id extends string, SS>(
   id: Id,
-  storeSetup: () => SS
+  storeSetup: () => SS,
+  setupOptions: any
 ): any;
 // 函数重载最后要写最终实现
 export function defineStore<Id extends string>(
