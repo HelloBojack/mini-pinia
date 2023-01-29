@@ -9,3 +9,7 @@ export interface Pinia {
   _s: Map<string, any>;
   _p: any[];
 }
+
+export let activePinia: Pinia | undefined;
+export const setActivePinia = (pinia: Pinia | undefined) =>
+  (activePinia = pinia);

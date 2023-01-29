@@ -11,7 +11,12 @@ import {
   type ComputedRef,
   effectScope,
 } from "vue";
-import { piniaSymbol, type Pinia } from "./rootStore";
+import {
+  activePinia,
+  piniaSymbol,
+  setActivePinia,
+  type Pinia,
+} from "./rootStore";
 import { addSubscription, triggerSubscriptions } from "./subscriptions";
 
 interface Options {
@@ -221,7 +226,10 @@ export function defineStore<Id extends string>(
   function useStore() {
     // 当前 vue 实例
     const currentInstance = getCurrentInstance();
-    const pinia: any = currentInstance && inject(piniaSymbol, null);
+    let pinia: any = currentInstance && inject(piniaSymbol, null);
+
+    if (pinia) setActivePinia(pinia);
+    pinia = activePinia;
 
     if (!pinia._s.has(id)) {
       // 没有则创建
