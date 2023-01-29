@@ -83,7 +83,8 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
 
   function wrapAction(name: string, action: T) {
     return function () {
-      const args = Array.from(arguments);
+      // @ts-ignore
+      const args = Array.from(argumnts);
 
       const afterCallbackList: Array<(resolvedReturn: any) => any> = [];
       const onErrorCallbackList: Array<(error: unknown) => unknown> = [];
@@ -94,6 +95,7 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
         onErrorCallbackList.push(callback);
       }
 
+      // @ts-ignore // @ts-ignore
       triggerSubscriptions(actionSubscriptions, { args, after, onError });
 
       let ret;
@@ -128,11 +130,22 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
         pinia.state.value[id][key] = prop;
       }
     } else if (typeof prop === "function") {
+      // @ts-expect-error
       setupStore[key] = wrapAction(key, prop);
     }
   }
 
   Object.assign(store, setupStore);
+
+  Object.defineProperty(store, "$state", {
+    get: () => pinia.state.value[id],
+    set: (state) => {
+      $patch(($state: any) => {
+        Object.assign($state, state);
+      });
+    },
+  });
+
   return store;
 }
 
@@ -161,10 +174,11 @@ function createOptionsStore<Id extends string>(
 
   const store = createSetupStore(id, setup, options, pinia, true);
 
+  // @ts-ignore
   store.$reset = function $reset() {
     const initialState = state ? state() : {};
-    this.$patch((state) => {
-      Object.assign(state, initialState);
+    this.$patch(($state: any) => {
+      Object.assign($state, initialState);
     });
   };
 
