@@ -9,6 +9,7 @@ import {
   reactive,
   toRefs,
   type ComputedRef,
+  effectScope,
 } from "vue";
 import { piniaSymbol, type Pinia } from "./rootStore";
 import { addSubscription, triggerSubscriptions } from "./subscriptions";
@@ -48,7 +49,7 @@ function mergeReactiveObjects(target: any, patchToApply: any) {
 }
 
 function createSetupStore<Id extends string, SS, T extends _Method>(
-  id: Id,
+  $id: Id,
   setup: () => SS,
   options: Omit<Options, "id">,
   pinia: Pinia,
@@ -57,15 +58,16 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
   const actionSubscriptions: T[] = [];
   function $patch(partialStateOrMutator: any) {
     if (typeof partialStateOrMutator === "function") {
-      partialStateOrMutator(pinia.state.value[id]);
+      partialStateOrMutator(pinia.state.value[$id]);
     } else {
-      mergeReactiveObjects(pinia.state.value[id], partialStateOrMutator);
+      mergeReactiveObjects(pinia.state.value[$id], partialStateOrMutator);
     }
   }
-  function $subscribe(callback: T, options = {}) {
-    watch(pinia.state.value[id], callback);
+  function $subscribe(callback: T) {
+    watch(pinia.state.value[$id], (state) => callback({ storeId: $id }, state));
   }
   const partialStore = {
+    $id,
     $patch,
     $subscribe,
     $onAction: addSubscription.bind(null, actionSubscriptions),
@@ -73,18 +75,18 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
 
   const store = reactive(partialStore);
 
-  const initialState = pinia.state.value[id];
+  const initialState = pinia.state.value[$id];
   if (!isOptionsStore && !initialState) {
-    pinia.state.value[id] = {};
+    pinia.state.value[$id] = {};
   }
 
   const setupStore = setup();
-  pinia._s.set(id, store);
+  pinia._s.set($id, store);
 
   function wrapAction(name: string, action: T) {
     return function () {
-      // @ts-ignore
-      const args = Array.from(argumnts);
+      // eslint-disable-next-line prefer-rest-params
+      const args = Array.from(arguments);
 
       const afterCallbackList: Array<(resolvedReturn: any) => any> = [];
       const onErrorCallbackList: Array<(error: unknown) => unknown> = [];
@@ -127,7 +129,7 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
     const prop = setupStore[key];
     if (isReactive(prop) || (isRef(prop) && !isComputed(prop))) {
       if (!isOptionsStore) {
-        pinia.state.value[id][key] = prop;
+        pinia.state.value[$id][key] = prop;
       }
     } else if (typeof prop === "function") {
       // @ts-expect-error
@@ -138,12 +140,17 @@ function createSetupStore<Id extends string, SS, T extends _Method>(
   Object.assign(store, setupStore);
 
   Object.defineProperty(store, "$state", {
-    get: () => pinia.state.value[id],
+    get: () => pinia.state.value[$id],
     set: (state) => {
       $patch(($state: any) => {
         Object.assign($state, state);
       });
     },
+  });
+
+  pinia._p.forEach((plugin) => {
+    const scope = effectScope();
+    scope.run(() => plugin({ store }));
   });
 
   return store;
@@ -229,6 +236,8 @@ export function defineStore<Id extends string>(
 
     return store;
   }
+
+  useStore.$id = id;
 
   return useStore;
 }
